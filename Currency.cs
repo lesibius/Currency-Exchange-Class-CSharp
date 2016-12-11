@@ -9,66 +9,21 @@ using System.Xml;
 namespace CurrencyConverter
 {
  
- //This class contains some functions to manipulate currencies.
- //It gets information from the servers of European Central Bank.
- //To get list of available currencies, please use GetCurrencyList() method, the return type is IEnumerable<string>.
- //On construction the XML file is parsed, if something goes wrong Exeption will be thrown(WebException, FormatException or XmlException).
- //Even if there is no connection to ECB servers, default value is created for BGN / EUR convertion (the rate is constant).
- //@author Stamo Petkov
- //@version 1.0.0
- //@name Currency
- 
-
+    /// <summary>
+    /// This class contains some functions to manipulate currencies.
+    ///It gets information from the servers of European Central Bank.
+    ///To get list of available currencies, please use GetCurrencyList() method, the return type is IEnumerable<string>.
+    ///On construction the XML file is parsed, if something goes wrong Exeption will be thrown(WebException, FormatException or XmlException).
+    ///Even if there is no connection to ECB servers, default value is created for BGN / EUR convertion (the rate is constant).
+    /// </summary>
     public class Currency : ICurrencyConverter
     {
-        private string sourceUrl = @"http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
-        private XmlTextReader xml;
-        private string baseCurrency;
-        private Dictionary<string, decimal> exchangeRates = new Dictionary<string,decimal>();
-        private DateTime date = new DateTime();
-        private string currency;
-        private decimal rate;
 
-        //Use this readonly property to check the actual date for the rates
+        /****************************************************************************************
+        *                                   Constructor                                         *
+        ****************************************************************************************/
         
-        public DateTime Date
-        {
-            get
-            {
-                return this.date;
-            }
-        }
-
-        //Use this property to get or set base currency
-        //Base currency is used for displaying rates table and convertions. All calculations are performed according to base currency!
-        //EUR by default
-        //Throws ApplicationException if value is not in currency list
-
-        public string BaseCurrency
-        {
-            get
-            {
-                return this.baseCurrency;
-            }
-            set
-            {
-                if (value == null)
-                {
-                    value = "EUR";
-                }
-                value = value.ToUpper();
-                value = value.Trim();
-                CheckCurrency(value);
-                this.baseCurrency = value;
-                decimal factor = this.exchangeRates[this.baseCurrency];
-                List<string> keys = new List<string>(this.exchangeRates.Keys);
-                foreach (string key in keys)
-                {
-                    this.exchangeRates[key] /= factor; 
-                }
-            }
-        }
-
+        
         public Currency()
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -122,6 +77,89 @@ namespace CurrencyConverter
             this.exchangeRates.Add(this.baseCurrency, 1M);
         }
 
+        /****************************************************************************************
+        *                                   Variables                                           *
+        ****************************************************************************************/
+
+
+        private string sourceUrl = @"http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
+        private XmlTextReader xml;
+        private string baseCurrency;
+        private Dictionary<string, decimal> exchangeRates = new Dictionary<string,decimal>();
+        private DateTime date = new DateTime();
+        private string currency;
+        private decimal rate;
+        
+
+        /****************************************************************************************
+        *                                   Properties                                          *
+        ****************************************************************************************/
+
+        /// <summary>
+        /// Provide the actual date for the rates from the ECB
+        /// </summary>
+        public DateTime Date
+        {
+            get
+            {
+                return this.date;
+            }
+        }
+
+
+        /// <summary>
+        /// Get or set base currency. EUR by default
+        /// </summary>
+        public string BaseCurrency
+        {
+            get
+            {
+                return this.baseCurrency;
+            }
+            set
+            {
+                if (value == null)
+                {
+                    value = "EUR";
+                }
+                value = value.ToUpper();
+                value = value.Trim();
+                CheckCurrency(value);
+                this.baseCurrency = value;
+                decimal factor = this.exchangeRates[this.baseCurrency];
+                List<string> keys = new List<string>(this.exchangeRates.Keys);
+                foreach (string key in keys)
+                {
+                    this.exchangeRates[key] /= factor; 
+                }
+            }
+        }
+
+
+        /****************************************************************************************
+        *                                       Private Methods                                 *
+        ****************************************************************************************/
+
+        /// <summary>
+        /// checks if currency is in currency list and throws exception if not
+        /// </summary>
+        /// <param name="currency">Currency to check</param>
+        private void CheckCurrency(string currency)
+        {
+            if (!this.exchangeRates.ContainsKey(currency))
+            {
+                throw new ApplicationException("Unknown currency '" + currency + "', please use GetCurrencyList() to get list of available currencies!", new KeyNotFoundException());
+            }
+        }
+
+        /****************************************************************************************
+        *                                       Public Methods                                  *
+        ****************************************************************************************/
+
+        /// <summary>
+        /// Override the <c>ToString</c> method
+        /// </summary>
+        /// <returns>A string representation of the <c>Currency</c> instance</returns>
         public override string ToString() // Converts Exchange Rate Table to String
         {
             StringBuilder str = new StringBuilder();
@@ -133,21 +171,14 @@ namespace CurrencyConverter
             return str.ToString();
         }
 
-        private void CheckCurrency(string currency) // checks if currency is in currency list and throws exception if not
-        {
-            if (!this.exchangeRates.ContainsKey(currency))
-            {
-                throw new ApplicationException("Unknown currency '" + currency + "', please use GetCurrencyList() to get list of available currencies!", new KeyNotFoundException());
-            }
-        }
-
-       //Exchanges the givven amount from one currency to the other
-       //param Decimal amount The amount to be exchanged
-       //param String from Currency of the amount (three letter code)
-       //param String to Currency to witch we wish to exchange. Base currency if not specified.
-       //returns Decimal - the exchanged amount on success
-       //Throws ApplicationException if currency is not in currency list
-
+        
+       /// <summary>
+        /// Exchanges the givven amount from one currency to the other
+        /// </summary>
+        /// <param name="amount">The amount to be exchanged</param>
+        /// <param name="from">Currency of the amount (three letter code)</param>
+        /// <param name="to">Currency to witch we wish to exchange. Base currency if not specified.</param>
+        /// <returns>the exchanged amount on success</returns>
         public decimal Exchange(decimal amount, string from, string to = null)
         {
             decimal result = 0M;
@@ -163,12 +194,13 @@ namespace CurrencyConverter
             return result;
         }
 
-        //Gets the cross rate between two currencies
-        //param String from first Currency (three letter code)
-        //param String to second Currency (three letter code). Base currency if not specified.
-        //returns decimal - the cross rate on success
-        //Throws ApplicationException if currency is not in currency list
 
+        /// <summary>
+        /// Gets the cross rate between two currencies
+        /// </summary>
+        /// <param name="from">first Currency (three letter code)</param>
+        /// <param name="to">second Currency (three letter code). Base currency if not specified.</param>
+        /// <returns>the cross rate on success</returns>
         public decimal CrossRate(string from, string to = null)
         {
             decimal result = 0M;
@@ -184,11 +216,12 @@ namespace CurrencyConverter
             return result;
         }
 
-       //Gets the rates table based on Base currency
-       //param string currencyList - list of comma separated Currencies to be included in the table. All currencies by default
-       //returns IEnumerable<Rates> containing desired currencies and rates
-       //Throws ApplicationException if currency is not in currency list
 
+        /// <summary>
+        /// Gets the rates table based on Base currency
+        /// </summary>
+        /// <param name="currencyList">list of comma separated Currencies to be included in the table. All currencies by default</param>
+        /// <returns>IEnumerable<Rates> containing desired currencies and rates</returns>
         public IEnumerable<Rates> GetRatesTable(string currencyList = null)
         {
             List<Rates> result = new List<Rates>();
@@ -219,9 +252,12 @@ namespace CurrencyConverter
             return result;
         }
 
-        //Gets the list of currencies. If sorted is true, the returned list is sorted. False by default
-        //returns IEnumerable<string> of all available currencies 
 
+        /// <summary>
+        /// Gets the list of currencies
+        /// </summary>
+        /// <param name="sorted">If sorted is true, the returned list is sorted. False by default</param>
+        /// <returns>IEnumerable<string> of all available currencies </returns>
         public IEnumerable<string> GetCurrencyList(bool sorted = false)
         {
             List<string> currencyList = new List<string>(this.exchangeRates.Keys);
