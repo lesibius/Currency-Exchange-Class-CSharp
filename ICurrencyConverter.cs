@@ -5,8 +5,6 @@ namespace CurrencyConverter
 {
     interface ICurrencyConverter
     {
-        //-----------------Properties--------------------------
-
 
         /********************************************************************************
         *                           Properties                                          *
